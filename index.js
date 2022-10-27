@@ -3,7 +3,8 @@ var winningWord = '';
 var currentRow = 1;
 var guess = '';
 var gamesPlayed = [];
-let wordCollection
+let wordsCollection;
+var winner = false;
 
 // Query Selectors
 var inputs = document.querySelectorAll('input');
@@ -17,9 +18,12 @@ var gameBoard = document.querySelector('#game-section');
 var letterKey = document.querySelector('#key-section');
 var rules = document.querySelector('#rules-section');
 var stats = document.querySelector('#stats-section');
-var gameOverBox = document.querySelector('#game-over-section');
-var gameOverGuessCount = document.querySelector('#game-over-guesses-count');
-var gameOverGuessGrammar = document.querySelector('#game-over-guesses-plural');
+var winningGameOverBox = document.querySelector('#winning-game-over-section');
+var losingGameOverBox = document.querySelector('#losing-game-over-section');
+var winningGameOverGuessCount = document.querySelector('#winning-game-over-guesses-count');
+var winningGameOverGuessGrammar = document.querySelector('#winning-game-over-guesses-plural');
+var losingGameOverGuessCount = document.querySelector('#losing-game-over-guesses-count');
+var losingGameOverGuessGrammar = document.querySelector('#losing-game-over-guesses-plural');
 
 // Event Listeners
 window.addEventListener('load', gatherData);
@@ -45,7 +49,7 @@ function gatherData() {
 fetch('http://localhost:3001/api/v1/words')
   .then(response => response.json())
   .then(data => {
-    wordCollection = data
+    wordsCollection = data
     setGame()
   })
   .catch(err => console.log('There has been an error!'))
@@ -60,7 +64,7 @@ function setGame() {
 
 function getRandomWord() {
   var randomIndex = Math.floor(Math.random() * 2500);
-  return wordCollection[randomIndex];
+  return wordsCollection[randomIndex];
 }
 
 function updateInputPermissions() {
@@ -104,7 +108,11 @@ function submitGuess() {
     errorMessage.innerText = '';
     compareGuess();
     if (checkForWin()) {
+      winner = true
       setTimeout(declareWinner, 1000);
+    } else if (!checkForWin() && currentRow === 6) {
+      winner = false
+      setTimeout(declareLoser, 1000);
     } else {
       changeRow();
     }
@@ -122,7 +130,7 @@ function checkIsWord() {
     }
   }
 
-  return wordCollection.includes(guess);
+  return wordsCollection.includes(guess);
 }
 
 function compareGuess() {
@@ -184,16 +192,36 @@ function declareWinner() {
   setTimeout(startNewGame, 4000);
 }
 
+function declareLoser() {
+  recordGameStats();
+  changeGameOverText();
+  viewGameOverMessage();
+  setTimeout(startNewGame, 4000);
+}
+
 function recordGameStats() {
-  gamesPlayed.push({ solved: true, guesses: currentRow });
+  if (winner) {
+    gamesPlayed.push({ solved: true, guesses: currentRow });
+  } else {
+    gamesPlayed.push({ solved: false, guesses: currentRow });
+  }
 }
 
 function changeGameOverText() {
-  gameOverGuessCount.innerText = currentRow;
-  if (currentRow < 2) {
-    gameOverGuessGrammar.classList.add('collapsed');
+  if (winner) {
+    winningGameOverGuessCount.innerText = currentRow;
+    if (currentRow < 2) {
+      winningGameOverGuessGrammar.classList.add('collapsed');
+    } else {
+      winningGameOverGuessGrammar.classList.remove('collapsed');
+    }
   } else {
-    gameOverGuessGrammar.classList.remove('collapsed');
+    losingGameOverGuessCount.innerText = currentRow;
+    if (currentRow < 2) {
+      losingGameOverGuessGrammar.classList.add('collapsed');
+    } else {
+      losingGameOverGuessGrammar.classList.remove('collapsed');
+    }
   }
 }
 
@@ -203,6 +231,7 @@ function startNewGame() {
   setGame();
   viewGame();
   inputs[0].focus();
+  winner = false
 }
 
 function clearGameBoard() {
@@ -235,7 +264,8 @@ function viewGame() {
   gameBoard.classList.remove('collapsed');
   rules.classList.add('collapsed');
   stats.classList.add('collapsed');
-  gameOverBox.classList.add('collapsed')
+  winningGameOverBox.classList.add('collapsed')
+  losingGameOverBox.classList.add('collapsed')
   viewGameButton.classList.add('active');
   viewRulesButton.classList.remove('active');
   viewStatsButton.classList.remove('active');
@@ -252,7 +282,11 @@ function viewStats() {
 }
 
 function viewGameOverMessage() {
-  gameOverBox.classList.remove('collapsed')
+  if (winner) {
+    winningGameOverBox.classList.remove('collapsed')
+  } else {
+    losingGameOverBox.classList.remove('collapsed')
+  }
   letterKey.classList.add('hidden');
   gameBoard.classList.add('collapsed');
 }
